@@ -1,11 +1,16 @@
-#include "App.h"
+#include "app.h"
+#include "tui.h"
+
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-int get_line_input(char** line, int size)
+int get_line_input(char** line)
 {
-    *line = (char*)malloc(size * sizeof(char));
+    size_t size = 0;
+    size_t capacity = 10;
+    *line = (char*)malloc(capacity * sizeof(char));
 
     if (*line == NULL)
     {
@@ -14,22 +19,28 @@ int get_line_input(char** line, int size)
     }
 
     printf("Enter a line: ");
-    if (fgets(*line, size, stdin) == NULL)
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF)
     {
-        fprintf(stderr, "Error reading input\n");
-        free(*line);
-        return FAILURE;
+        if (size + 1 >= capacity)
+        {
+            capacity *= 2;
+            char* new_line = (char*)realloc(*line, capacity * sizeof(char));
+            if (new_line == NULL)
+            {
+                fprintf(stderr, "Memory allocation failed\n");
+                free(*line);
+                return FAILURE;
+            }
+            *line = new_line;
+        }
+        (*line)[size++] = ch;
     }
+    (*line)[size] = '\0';
 
-    // Optionally, remove the newline character if present
-    size_t lenght = strlen(*line);
-    if (lenght > 0 && (*line)[lenght - 1] == '\n')
-    {
-        (*line)[lenght - 1] = '\0';
-    }
-
-    return lenght;
+    return size;
 }
+
 
 int append_line_to_file(char* line, char* file_name, int size)
 {
@@ -112,11 +123,12 @@ char *get_line(FILE* file)
 		return NULL;
 	}
 
-	fopen(file, "r");
-	if (file == NULL)
-	{
-		return NULL;
-	}
+    errno_t err = fopen_s(&file, "file_name", "r");
+    if (err != 0)
+    {
+        fprintf(stderr, "Failed to open file\n");
+        return NULL;
+    }
 
     char ch;
 
@@ -143,21 +155,4 @@ char *get_line(FILE* file)
 }
 
 
-int line_reader(const char *file_name)
-{
-    FILE* file = fopen(file_name, "r");
-    if (file == NULL)
-    {
-        fprintf(stderr, "Failed to open file\n");
-        return FAILURE;
-    }
 
-    char ch;
-    while ((ch = fgetc(file)) != EOF)
-    {
-        printf("%c", ch);
-    }
-
-    fclose(file);
-    return SUCCESS;
-}
